@@ -1,0 +1,14 @@
+[project]
+name = "rag-docs"
+version = "0.1.0"
+description = "RAG over my own documents"
+requires-python = ">=3.11"
+dependencies = [
+  "anthropic",
+  "chromadb",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.1",
+]
