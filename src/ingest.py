@@ -8,13 +8,14 @@ from pathlib import Path
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CHUNK_SIZE = 800  # characters per chunk; tune this during evals
 CHUNK_OVERLAP = 100  # characters shared between neighbouring chunks
+EXCLUDED_FILES = {"README.md"}  # files in data/ that are not documents to index
 
 
 def load_documents(data_dir: Path = DATA_DIR) -> list[tuple[str, str]]:
     """Return (filename, text) pairs for every .md and .txt file in data_dir."""
     docs = []
     for path in sorted(data_dir.glob("*")):
-        if path.suffix in {".md", ".txt"}:
+        if path.suffix in {".md", ".txt"} and path.name not in EXCLUDED_FILES:
             docs.append((path.name, path.read_text(encoding="utf-8")))
     return docs
 
