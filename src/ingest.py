@@ -5,7 +5,11 @@ Week 4 task: implement load_documents, chunk_text, and store_chunks.
 
 from pathlib import Path
 
+import chromadb
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+CHROMA_DIR = Path(__file__).resolve().parent.parent / "chroma_db"
+COLLECTION_NAME = "docs"
 CHUNK_SIZE = 800  # characters per chunk; tune this during evals
 CHUNK_OVERLAP = 100  # characters shared between neighbouring chunks
 EXCLUDED_FILES = {"README.md"}  # files in data/ that are not documents to index
@@ -38,11 +42,31 @@ def chunk_text(
         start += size - overlap
 
 
-def store_chunks(chunks: list[dict]) -> None:
-    """Embed and store chunks. Implement with Chroma or pgvector in week 4."""
-    raise NotImplementedError
+def build_chunks(docs: list[tuple[str, str]]) -> list[dict]:
+    """Turn (filename, text) pairs into chunk dicts with id, text and source."""
+    chunks = []
+    for filename, text in docs:
+        for i, piece in enumerate(chunk_text(text)):
+            chunks.append({"id": f"{filename}:{i}", "text": piece, "source": filename})
+    return chunks
+
+
+def get_collection(path: Path = CHROMA_DIR):
+    client = chromadb.PersistentClient(path=str(path))
+    return client.get_or_create_collection(name=COLLECTION_NAME)
+
+
+def store_chunks(chunks: list[dict], path: Path = CHROMA_DIR) -> None:
+    """Embed and store chunks. Re-running replaces chunks with the same id."""
+    col = get_collection(path)
+    col.upsert(
+        ids=[c["id"] for c in chunks],
+        documents=[c["text"] for c in chunks],
+        metadatas=[{"source": c["source"]} for c in chunks],
+    )
 
 
 if __name__ == "__main__":
-    for name, text in load_documents():
-        print(f"{name}: {len(chunk_text(text))} chunks")
+    chunks = build_chunks(load_documents())
+    store_chunks(chunks)
+    print(f"Stored {len(chunks)} chunks in {CHROMA_DIR}")

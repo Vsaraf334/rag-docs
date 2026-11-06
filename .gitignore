@@ -5,3 +5,5 @@ __pycache__/
 .env
 scratch/
 .vscode/
+chroma_db/
+.DS_Store
