@@ -1,1 +1,24 @@
-{"question": "Replace this with a question about one of your documents", "expected": "a short phrase the correct answer must contain"}
+{"question": "How do I return a 404 error?", "source": "handling-errors.md", "expected": "HTTPException"}
+{"question": "How can I add extra headers to an error response?", "source": "handling-errors.md", "expected": "headers"}
+{"question": "How do I customise the response when the request data is invalid?", "source": "handling-errors.md", "expected": "RequestValidationError"}
+{"question": "How do I run code after sending the response?", "source": "background-tasks.md", "expected": "BackgroundTasks"}
+{"question": "Which method schedules a function to run in the background?", "source": "background-tasks.md", "expected": "add_task"}
+{"question": "What should I use instead for heavy jobs that need to run on multiple servers?", "source": "background-tasks.md", "expected": "Celery"}
+{"question": "How do I accept a JSON object in a POST request?", "source": "body.md", "expected": "BaseModel"}
+{"question": "How do I make a field in the request JSON optional?", "source": "body.md", "expected": "None"}
+{"question": "How do I start the development server?", "source": "first-steps.md", "expected": "fastapi dev"}
+{"question": "Where can I see the interactive API documentation?", "source": "first-steps.md", "expected": "/docs"}
+{"question": "How do I restrict a URL parameter to a fixed set of allowed values?", "source": "path-params.md", "expected": "Enum"}
+{"question": "What happens if a client sends text where the URL expects a number?", "source": "path-params.md", "expected": "integer"}
+{"question": "I have /users/me and /users/{user_id}. Why does /users/me return the wrong thing?", "source": "path-params.md", "expected": "before"}
+{"question": "How do I accept a file path like home/johndoe/file.txt inside the URL?", "source": "path-params.md", "expected": ":path"}
+{"question": "How do I make a query parameter mandatory?", "source": "query-params.md", "expected": "default"}
+{"question": "If a bool query parameter is sent as 'yes' or 'on', what value does my function get?", "source": "query-params.md", "expected": "True"}
+{"question": "How do I stop the user's password from being sent back in the response?", "source": "response-model.md", "expected": "UserOut"}
+{"question": "How do I leave out fields that were never set from the JSON response?", "source": "response-model.md", "expected": "response_model_exclude_unset"}
+{"question": "How do I test my API?", "source": "testing.md", "expected": "TestClient"}
+{"question": "Which package must I install to use the test client?", "source": "testing.md", "expected": "httpx"}
+{"question": "How do I connect FastAPI to MongoDB?", "source": null, "expected": "don't know"}
+{"question": "How do I protect my endpoints with JWT tokens?", "source": null, "expected": "don't know"}
+{"question": "How do I deploy my FastAPI app to Kubernetes?", "source": null, "expected": "don't know"}
+{"question": "How do I allow requests from a React app on another domain (CORS)?", "source": null, "expected": "don't know"}

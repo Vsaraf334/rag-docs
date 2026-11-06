@@ -26,7 +26,11 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
 
 
 def answer(question: str) -> str:
-    chunks = retrieve(question)
+    return generate(question, retrieve(question))
+
+
+def generate(question: str, chunks: list[dict]) -> str:
+    """Ask Claude to answer the question using only the given chunks."""
     response = client.messages.create(
         model=MODEL,
         max_tokens=1024,
