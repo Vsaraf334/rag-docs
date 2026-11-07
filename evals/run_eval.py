@@ -3,7 +3,7 @@
 Each line of questions.jsonl looks like:
 {"question": "...", "source": "file.md" or null, "expected": "a phrase the answer must contain"}
 
-Run:  uv run --env-file .env python evals/run_eval.py
+Run:  uv run --env-file .env python evals/run_eval.py [top_k]   (default 8)
 """
 
 import json
@@ -24,9 +24,9 @@ def load_questions(path: Path = QUESTIONS) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def evaluate(q: dict) -> dict:
+def evaluate(q: dict, top_k: int) -> dict:
     """Run one question through retrieval and generation, and score both."""
-    chunks = retrieve(q["question"])
+    chunks = retrieve(q["question"], top_k=top_k)
     sources = [c["source"] for c in chunks]
     answer = generate(q["question"], chunks)
     result = judge(q["question"], q["expected"], q["source"] is not None, answer)
@@ -40,8 +40,9 @@ def evaluate(q: dict) -> dict:
     }
 
 
-def main() -> None:
-    results = [evaluate(q) for q in load_questions()]
+def main(top_k: int) -> None:
+    print(f"top_k = {top_k}\n")
+    results = [evaluate(q, top_k) for q in load_questions()]
     answerable = [r for r in results if r["source"] is not None]
     unanswerable = [r for r in results if r["source"] is None]
 
@@ -64,4 +65,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(top_k=int(sys.argv[1]) if len(sys.argv) > 1 else 8)

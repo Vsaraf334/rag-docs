@@ -6,7 +6,7 @@ from pathlib import Path
 from ingest import CHROMA_DIR, get_collection
 
 
-def retrieve(question: str, top_k: int = 4, path: Path = CHROMA_DIR) -> list[dict]:
+def retrieve(question: str, top_k: int = 8, path: Path = CHROMA_DIR) -> list[dict]:
     """Return the top_k closest chunks as dicts with text, source and distance."""
     res = get_collection(path).query(query_texts=[question], n_results=top_k)
     docs, metas, dists = res["documents"], res["metadatas"], res["distances"]
