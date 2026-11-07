@@ -6,6 +6,8 @@ requires-python = ">=3.11"
 dependencies = [
   "anthropic",
   "chromadb",
+  "pgvector>=0.5.1",
+  "psycopg[binary]>=3.3.8",
   "pydantic>=2.14.1",
 ]
 

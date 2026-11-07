@@ -3,20 +3,27 @@
 Each line of questions.jsonl looks like:
 {"question": "...", "source": "file.md" or null, "expected": "a phrase the answer must contain"}
 
-Run:  uv run --env-file .env python evals/run_eval.py [top_k]   (default 8)
+Run:  uv run --env-file .env python evals/run_eval.py [--backend chroma|pg] [--top-k 8]
 """
 
+import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from judge import judge
 
 from answer import generate
+from pg_store import retrieve_pg
 from retrieve import retrieve
 
 QUESTIONS = Path(__file__).resolve().parent / "questions.jsonl"
+RETRIEVERS: dict[str, Callable[..., list[dict]]] = {
+    "chroma": retrieve,
+    "pg": retrieve_pg,
+}
 
 
 def load_questions(path: Path = QUESTIONS) -> list[dict]:
@@ -24,9 +31,9 @@ def load_questions(path: Path = QUESTIONS) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def evaluate(q: dict, top_k: int) -> dict:
+def evaluate(q: dict, retriever: Callable[..., list[dict]], top_k: int) -> dict:
     """Run one question through retrieval and generation, and score both."""
-    chunks = retrieve(q["question"], top_k=top_k)
+    chunks = retriever(q["question"], top_k=top_k)
     sources = [c["source"] for c in chunks]
     answer = generate(q["question"], chunks)
     result = judge(q["question"], q["expected"], q["source"] is not None, answer)
@@ -40,9 +47,10 @@ def evaluate(q: dict, top_k: int) -> dict:
     }
 
 
-def main(top_k: int) -> None:
-    print(f"top_k = {top_k}\n")
-    results = [evaluate(q, top_k) for q in load_questions()]
+def main(backend: str, top_k: int) -> None:
+    print(f"backend = {backend}, top_k = {top_k}\n")
+    retriever = RETRIEVERS[backend]
+    results = [evaluate(q, retriever, top_k) for q in load_questions()]
     answerable = [r for r in results if r["source"] is not None]
     unanswerable = [r for r in results if r["source"] is None]
 
@@ -65,4 +73,8 @@ def main(top_k: int) -> None:
 
 
 if __name__ == "__main__":
-    main(top_k=int(sys.argv[1]) if len(sys.argv) > 1 else 8)
+    parser = argparse.ArgumentParser(description="Evaluate the RAG system.")
+    parser.add_argument("--backend", choices=RETRIEVERS, default="chroma")
+    parser.add_argument("--top-k", type=int, default=8)
+    args = parser.parse_args()
+    main(args.backend, args.top_k)
