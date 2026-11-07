@@ -22,7 +22,25 @@ As it is discouraged, the interactive docs with Swagger UI won't show the docume
 
 First, you need to import `BaseModel` from `pydantic`:
 
-{* ../../docs_src/body/tutorial001_py310.py hl[2] *}
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
+```
 
 ## Create your data model { #create-your-data-model }
 
@@ -30,7 +48,25 @@ Then you declare your data model as a class that inherits from `BaseModel`.
 
 Use standard Python types for all the attributes:
 
-{* ../../docs_src/body/tutorial001_py310.py hl[5:9] *}
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
+```
 
 
 The same as when declaring query parameters, when a model attribute has a default value, it is not required. Otherwise, it is required. Use `None` to make it just optional.
@@ -59,7 +95,25 @@ For example, this model above declares a JSON "`object`" (or Python `dict`) like
 
 To add it to your *path operation*, declare it the same way you declared path and query parameters:
 
-{* ../../docs_src/body/tutorial001_py310.py hl[16] *}
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
+```
 
 ...and declare its type as the model you created, `Item`.
 
@@ -126,7 +180,29 @@ It improves editor support for Pydantic models, with:
 
 Inside of the function, you can access all the attributes of the model object directly:
 
-{* ../../docs_src/body/tutorial002_py310.py *}
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    item_dict = item.model_dump()
+    if item.tax is not None:
+        price_with_tax = item.price + item.tax
+        item_dict.update({"price_with_tax": price_with_tax})
+    return item_dict
+```
 
 ## Request body + path parameters { #request-body-path-parameters }
 
@@ -134,7 +210,25 @@ You can declare path parameters and request body at the same time.
 
 **FastAPI** will recognize that the function parameters that match path parameters should be **taken from the path**, and that function parameters that are declared to be Pydantic models should be **taken from the request body**.
 
-{* ../../docs_src/body/tutorial003_py310.py hl[15:16] *}
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Item):
+    return {"item_id": item_id, **item.model_dump()}
+```
 
 
 ## Request body + path + query parameters { #request-body-path-query-parameters }
@@ -143,7 +237,28 @@ You can also declare **body**, **path** and **query** parameters, all at the sam
 
 **FastAPI** will recognize each of them and take the data from the correct place.
 
-{* ../../docs_src/body/tutorial004_py310.py hl[16] *}
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+app = FastAPI()
+
+
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Item, q: str | None = None):
+    result = {"item_id": item_id, **item.model_dump()}
+    if q:
+        result.update({"q": q})
+    return result
+```
 
 The function parameters will be recognized as follows:
 

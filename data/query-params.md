@@ -2,7 +2,18 @@
 
 When you declare other function parameters that are not part of the path parameters, they are automatically interpreted as "query" parameters.
 
-{* ../../docs_src/query_params/tutorial001_py310.py hl[9] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"}]
+
+
+@app.get("/items/")
+async def read_item(skip: int = 0, limit: int = 10):
+    return fake_items_db[skip : skip + limit]
+```
 
 The query is the set of key-value pairs that go after the `?` in a URL, separated by `&` characters.
 
@@ -61,7 +72,18 @@ The parameter values in your function will be:
 
 The same way, you can declare optional query parameters, by setting their default to `None`:
 
-{* ../../docs_src/query_params/tutorial002_py310.py hl[7] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str, q: str | None = None):
+    if q:
+        return {"item_id": item_id, "q": q}
+    return {"item_id": item_id}
+```
 
 In this case, the function parameter `q` will be optional, and will be `None` by default.
 
@@ -75,7 +97,23 @@ Also notice that **FastAPI** is smart enough to notice that the path parameter `
 
 You can also declare `bool` types, and they will be converted:
 
-{* ../../docs_src/query_params/tutorial003_py310.py hl[7] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str, q: str | None = None, short: bool = False):
+    item = {"item_id": item_id}
+    if q:
+        item.update({"q": q})
+    if not short:
+        item.update(
+            {"description": "This is an amazing item that has a long description"}
+        )
+    return item
+```
 
 In this case, if you go to:
 
@@ -124,7 +162,25 @@ And you don't have to declare them in any specific order.
 
 They will be detected by name:
 
-{* ../../docs_src/query_params/tutorial004_py310.py hl[6,8] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/users/{user_id}/items/{item_id}")
+async def read_user_item(
+    user_id: int, item_id: str, q: str | None = None, short: bool = False
+):
+    item = {"item_id": item_id, "owner_id": user_id}
+    if q:
+        item.update({"q": q})
+    if not short:
+        item.update(
+            {"description": "This is an amazing item that has a long description"}
+        )
+    return item
+```
 
 ## Required query parameters { #required-query-parameters }
 
@@ -134,7 +190,17 @@ If you don't want to add a specific value but just make it optional, set the def
 
 But when you want to make a query parameter required, you can just not declare any default value:
 
-{* ../../docs_src/query_params/tutorial005_py310.py hl[6:7] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_user_item(item_id: str, needy: str):
+    item = {"item_id": item_id, "needy": needy}
+    return item
+```
 
 Here the query parameter `needy` is a required query parameter of type `str`.
 
@@ -179,7 +245,19 @@ http://127.0.0.1:8000/items/foo-item?needy=sooooneedy
 
 And of course, you can define some parameters as required, some as having a default value, and some entirely optional:
 
-{* ../../docs_src/query_params/tutorial006_py310.py hl[8] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_user_item(
+    item_id: str, needy: str, skip: int = 0, limit: int | None = None
+):
+    item = {"item_id": item_id, "needy": needy, "skip": skip, "limit": limit}
+    return item
+```
 
 In this case, there are 3 query parameters:
 

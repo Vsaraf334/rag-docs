@@ -11,8 +11,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from answer import generate
 from judge import judge
+
+from answer import generate
 from retrieve import retrieve
 
 QUESTIONS = Path(__file__).resolve().parent / "questions.jsonl"

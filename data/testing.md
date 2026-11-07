@@ -30,7 +30,26 @@ Use the `TestClient` object the same way as you do with `httpx`.
 
 Write simple `assert` statements with the standard Python expressions that you need to check (again, standard `pytest`).
 
-{* ../../docs_src/app_testing/tutorial001_py310.py hl[2,12,15:18] *}
+```python
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+app = FastAPI()
+
+
+@app.get("/")
+async def read_main():
+    return {"msg": "Hello World"}
+
+
+client = TestClient(app)
+
+
+def test_read_main():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"msg": "Hello World"}
+```
 
 /// tip
 
@@ -76,7 +95,16 @@ Let's say you have a file structure as described in [Bigger Applications](bigger
 In the file `main.py` you have your **FastAPI** app:
 
 
-{* ../../docs_src/app_testing/app_a_py310/main.py *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/")
+async def read_main():
+    return {"msg": "Hello World"}
+```
 
 ### Testing file { #testing-file }
 
@@ -92,7 +120,19 @@ Then you could have a file `test_main.py` with your tests. It could live on the 
 
 Because this file is in the same package, you can use relative imports to import the object `app` from the `main` module (`main.py`):
 
-{* ../../docs_src/app_testing/app_a_py310/test_main.py hl[3] *}
+```python
+from fastapi.testclient import TestClient
+
+from .main import app
+
+client = TestClient(app)
+
+
+def test_read_main():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"msg": "Hello World"}
+```
 
 
 ...and have the code for the tests just like before.
@@ -121,13 +161,118 @@ It has a `POST` operation that could return several errors.
 
 Both *path operations* require an `X-Token` header.
 
-{* ../../docs_src/app_testing/app_b_an_py310/main.py *}
+```python
+from typing import Annotated
+
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel
+
+fake_secret_token = "coneofsilence"
+
+fake_db = {
+    "foo": {"id": "foo", "title": "Foo", "description": "There goes my hero"},
+    "bar": {"id": "bar", "title": "Bar", "description": "The bartenders"},
+}
+
+app = FastAPI()
+
+
+class Item(BaseModel):
+    id: str
+    title: str
+    description: str | None = None
+
+
+@app.get("/items/{item_id}", response_model=Item)
+async def read_main(item_id: str, x_token: Annotated[str, Header()]):
+    if x_token != fake_secret_token:
+        raise HTTPException(status_code=400, detail="Invalid X-Token header")
+    if item_id not in fake_db:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return fake_db[item_id]
+
+
+@app.post("/items/")
+async def create_item(item: Item, x_token: Annotated[str, Header()]) -> Item:
+    if x_token != fake_secret_token:
+        raise HTTPException(status_code=400, detail="Invalid X-Token header")
+    if item.id in fake_db:
+        raise HTTPException(status_code=409, detail="Item already exists")
+    fake_db[item.id] = item.model_dump()
+    return item
+```
 
 ### Extended testing file { #extended-testing-file }
 
 You could then update `test_main.py` with the extended tests:
 
-{* ../../docs_src/app_testing/app_b_an_py310/test_main.py *}
+```python
+from fastapi.testclient import TestClient
+
+from .main import app
+
+client = TestClient(app)
+
+
+def test_read_item():
+    response = client.get("/items/foo", headers={"X-Token": "coneofsilence"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "foo",
+        "title": "Foo",
+        "description": "There goes my hero",
+    }
+
+
+def test_read_item_bad_token():
+    response = client.get("/items/foo", headers={"X-Token": "hailhydra"})
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid X-Token header"}
+
+
+def test_read_nonexistent_item():
+    response = client.get("/items/baz", headers={"X-Token": "coneofsilence"})
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Item not found"}
+
+
+def test_create_item():
+    response = client.post(
+        "/items/",
+        headers={"X-Token": "coneofsilence"},
+        json={"id": "foobar", "title": "Foo Bar", "description": "The Foo Barters"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "foobar",
+        "title": "Foo Bar",
+        "description": "The Foo Barters",
+    }
+
+
+def test_create_item_bad_token():
+    response = client.post(
+        "/items/",
+        headers={"X-Token": "hailhydra"},
+        json={"id": "bazz", "title": "Bazz", "description": "Drop the bazz"},
+    )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Invalid X-Token header"}
+
+
+def test_create_existing_item():
+    response = client.post(
+        "/items/",
+        headers={"X-Token": "coneofsilence"},
+        json={
+            "id": "foo",
+            "title": "The Foo ID Stealers",
+            "description": "There goes my stealer",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Item already exists"}
+```
 
 
 Whenever you need the client to pass information in the request and you don't know how to, you can search (Google) how to do it in `httpx`, or even how to do it with `requests`, as HTTPX's design is based on Requests' design.

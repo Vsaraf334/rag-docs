@@ -25,7 +25,20 @@ To return HTTP responses with errors to the client you use `HTTPException`.
 
 ### Import `HTTPException` { #import-httpexception }
 
-{* ../../docs_src/handling_errors/tutorial001_py310.py hl[1] *}
+```python
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+items = {"foo": "The Foo Wrestlers"}
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in items:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"item": items[item_id]}
+```
 
 ### Raise an `HTTPException` in your code { #raise-an-httpexception-in-your-code }
 
@@ -39,7 +52,20 @@ The benefit of raising an exception over returning a value will be more evident 
 
 In this example, when the client requests an item by an ID that doesn't exist, raise an exception with a status code of `404`:
 
-{* ../../docs_src/handling_errors/tutorial001_py310.py hl[11] *}
+```python
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+items = {"foo": "The Foo Wrestlers"}
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: str):
+    if item_id not in items:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"item": items[item_id]}
+```
 
 ### The resulting response { #the-resulting-response }
 
@@ -77,7 +103,24 @@ You probably won't need to use it directly in your code.
 
 But in case you needed it for an advanced scenario, you can add custom headers:
 
-{* ../../docs_src/handling_errors/tutorial002_py310.py hl[14] *}
+```python
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+items = {"foo": "The Foo Wrestlers"}
+
+
+@app.get("/items-header/{item_id}")
+async def read_item_header(item_id: str):
+    if item_id not in items:
+        raise HTTPException(
+            status_code=404,
+            detail="Item not found",
+            headers={"X-Error": "There goes my error"},
+        )
+    return {"item": items[item_id]}
+```
 
 ## Install custom exception handlers { #install-custom-exception-handlers }
 
@@ -89,7 +132,33 @@ And you want to handle this exception globally with FastAPI.
 
 You could add a custom exception handler with `@app.exception_handler()`:
 
-{* ../../docs_src/handling_errors/tutorial003_py310.py hl[5:7,13:18,24] *}
+```python
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+
+class UnicornException(Exception):
+    def __init__(self, name: str):
+        self.name = name
+
+
+app = FastAPI()
+
+
+@app.exception_handler(UnicornException)
+async def unicorn_exception_handler(request: Request, exc: UnicornException):
+    return JSONResponse(
+        status_code=418,
+        content={"message": f"Oops! {exc.name} did something. There goes a rainbow..."},
+    )
+
+
+@app.get("/unicorns/{name}")
+async def read_unicorn(name: str):
+    if name == "yolo":
+        raise UnicornException(name=name)
+    return {"unicorn_name": name}
+```
 
 Here, if you request `/unicorns/yolo`, the *path operation* will `raise` a `UnicornException`.
 
@@ -127,7 +196,34 @@ To override it, import the `RequestValidationError` and use it with `@app.except
 
 The exception handler will receive a `Request` and the exception.
 
-{* ../../docs_src/handling_errors/tutorial004_py310.py hl[2,14:19] *}
+```python
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+app = FastAPI()
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    message = "Validation errors:"
+    for error in exc.errors():
+        message += f"\nField: {error['loc']}, Error: {error['msg']}"
+    return PlainTextResponse(message, status_code=400)
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    if item_id == 3:
+        raise HTTPException(status_code=418, detail="Nope! I don't like 3.")
+    return {"item_id": item_id}
+```
 
 Now, if you go to `/items/foo`, instead of getting the default JSON error with:
 
@@ -159,7 +255,34 @@ The same way, you can override the `HTTPException` handler.
 
 For example, you could want to return a plain text response instead of JSON for these errors:
 
-{* ../../docs_src/handling_errors/tutorial004_py310.py hl[3:4,9:11,25] *}
+```python
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import PlainTextResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+app = FastAPI()
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request, exc):
+    return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    message = "Validation errors:"
+    for error in exc.errors():
+        message += f"\nField: {error['loc']}, Error: {error['msg']}"
+    return PlainTextResponse(message, status_code=400)
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    if item_id == 3:
+        raise HTTPException(status_code=418, detail="Nope! I don't like 3.")
+    return {"item_id": item_id}
+```
 
 /// note | Technical Details
 
@@ -183,7 +306,33 @@ The `RequestValidationError` contains the `body` it received with invalid data.
 
 You could use it while developing your app to log the body and debug it, return it to the user, etc.
 
-{* ../../docs_src/handling_errors/tutorial005_py310.py hl[14] *}
+```python
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+app = FastAPI()
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
+    )
+
+
+class Item(BaseModel):
+    title: str
+    size: int
+
+
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
+```
 
 Now try sending an invalid item like:
 
@@ -239,6 +388,35 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 If you want to use the exception along with the same default exception handlers from  **FastAPI**, you can import and reuse the default exception handlers from `fastapi.exception_handlers`:
 
-{* ../../docs_src/handling_errors/tutorial006_py310.py hl[2:5,15,21] *}
+```python
+from fastapi import FastAPI, HTTPException
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+app = FastAPI()
+
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request, exc):
+    print(f"OMG! An HTTP error!: {repr(exc)}")
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    print(f"OMG! The client sent invalid data!: {exc}")
+    return await request_validation_exception_handler(request, exc)
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    if item_id == 3:
+        raise HTTPException(status_code=418, detail="Nope! I don't like 3.")
+    return {"item_id": item_id}
+```
 
 In this example you are just printing the error with a very expressive message, but you get the idea. You can use the exception and then just reuse the default exception handlers.

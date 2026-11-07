@@ -2,7 +2,16 @@
 
 You can declare path "parameters" or "variables" with the same syntax used by Python format strings:
 
-{* ../../docs_src/path_params/tutorial001_py310.py hl[6:7] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id):
+    return {"item_id": item_id}
+```
 
 The value of the path parameter `item_id` will be passed to your function as the argument `item_id`.
 
@@ -16,7 +25,16 @@ So, if you run this example and go to [http://127.0.0.1:8000/items/foo](http://1
 
 You can declare the type of a path parameter in the function, using standard Python type annotations:
 
-{* ../../docs_src/path_params/tutorial002_py310.py hl[7] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    return {"item_id": item_id}
+```
 
 In this case, `item_id` is declared to be an `int`.
 
@@ -118,13 +136,41 @@ And then you can also have a path `/users/{user_id}` to get data about a specifi
 
 Because *path operations* are evaluated in order, you need to make sure that the path for `/users/me` is declared before the one for `/users/{user_id}`:
 
-{* ../../docs_src/path_params/tutorial003_py310.py hl[6,11] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/users/me")
+async def read_user_me():
+    return {"user_id": "the current user"}
+
+
+@app.get("/users/{user_id}")
+async def read_user(user_id: str):
+    return {"user_id": user_id}
+```
 
 Otherwise, the path for `/users/{user_id}` would match also for `/users/me`, "thinking" that it's receiving a parameter `user_id` with a value of `"me"`.
 
 Similarly, you cannot redefine a path operation:
 
-{* ../../docs_src/path_params/tutorial003b_py310.py hl[6,11] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/users")
+async def read_users():
+    return ["Rick", "Morty"]
+
+
+@app.get("/users")
+async def read_users2():
+    return ["Bean", "Elfo"]
+```
 
 The first one will always be used since the path matches first.
 
@@ -140,7 +186,31 @@ By inheriting from `str` the API docs will be able to know that the values must 
 
 Then create class attributes with fixed values, which will be the available valid values:
 
-{* ../../docs_src/path_params/tutorial005_py310.py hl[1,6:9] *}
+```python
+from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}
+```
 
 /// tip
 
@@ -152,7 +222,31 @@ If you are wondering, "AlexNet", "ResNet", and "LeNet" are just names of Machine
 
 Then create a *path parameter* with a type annotation using the enum class you created (`ModelName`):
 
-{* ../../docs_src/path_params/tutorial005_py310.py hl[16] *}
+```python
+from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}
+```
 
 ### Check the docs { #check-the-docs }
 
@@ -168,13 +262,61 @@ The value of the *path parameter* will be an *enumeration member*.
 
 You can compare it with the *enumeration member* in your created enum `ModelName`:
 
-{* ../../docs_src/path_params/tutorial005_py310.py hl[17] *}
+```python
+from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}
+```
 
 #### Get the *enumeration value* { #get-the-enumeration-value }
 
 You can get the actual value (a `str` in this case) using `model_name.value`, or in general, `your_enum_member.value`:
 
-{* ../../docs_src/path_params/tutorial005_py310.py hl[20] *}
+```python
+from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}
+```
 
 /// tip
 
@@ -188,7 +330,31 @@ You can return *enum members* from your *path operation*, even nested in a JSON 
 
 They will be converted to their corresponding values (strings in this case) before returning them to the client:
 
-{* ../../docs_src/path_params/tutorial005_py310.py hl[18,21,23] *}
+```python
+from enum import Enum
+
+from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
+
+app = FastAPI()
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    if model_name is ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}
+```
 
 In your client you will get a JSON response like:
 
@@ -227,7 +393,16 @@ In this case, the name of the parameter is `file_path`, and the last part, `:pat
 
 So, you can use it with:
 
-{* ../../docs_src/path_params/tutorial004_py310.py hl[6] *}
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/files/{file_path:path}")
+async def read_file(file_path: str):
+    return {"file_path": file_path}
+```
 
 /// tip
 

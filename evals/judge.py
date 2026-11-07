@@ -43,4 +43,8 @@ def judge(question: str, expected: str, answerable: bool, answer: str) -> Verdic
     if response.stop_reason == "max_tokens":
         raise RuntimeError("Judge reply was cut off; increase max_tokens")
     text = "".join(b.text for b in response.content if b.type == "text")
-    return Verdict.model_validate_json(text)
+    # The model sometimes writes a sentence before the JSON, so parse only the {...} part
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError(f"Judge reply has no JSON: {text!r}")
+    return Verdict.model_validate_json(text[start : end + 1])
