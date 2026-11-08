@@ -10,7 +10,7 @@ import psycopg
 import pytest
 
 from ingest import build_chunks, store_chunks
-from pg_store import connect, retrieve_pg, store_chunks_pg
+from pg_store import connect, retrieve_hybrid_pg, retrieve_pg, store_chunks_pg
 from retrieve import retrieve
 
 ADMIN_URL = os.environ.get(
@@ -96,3 +96,19 @@ def test_ranks_chunks_like_chroma(conn, tmp_path, question):
     chroma_order = [r["source"] for r in retrieve(question, top_k=3, path=tmp_path)]
     pg_order = [r["source"] for r in retrieve_pg(question, top_k=3)]
     assert pg_order == chroma_order
+
+
+def test_hybrid_finds_exact_keyword_and_sorts_by_score(conn):
+    store_chunks_pg(
+        conn, build_chunks([*DOCS, ("codes.md", "Error code QX42 means quota.")])
+    )
+    results = retrieve_hybrid_pg("QX42", top_k=2)
+    assert len(results) == 2
+    assert results[0]["source"] == "codes.md"
+    assert results[0]["score"] >= results[1]["score"]
+
+
+def test_hybrid_still_works_when_no_keyword_matches(conn):
+    store_chunks_pg(conn, build_chunks(DOCS))
+    results = retrieve_hybrid_pg("item not found", top_k=3)
+    assert results[0]["source"] == "errors.md"

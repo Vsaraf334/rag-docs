@@ -3,7 +3,7 @@
 Each line of questions.jsonl looks like:
 {"question": "...", "source": "file.md" or null, "expected": "a phrase the answer must contain"}
 
-Run:  uv run --env-file .env python evals/run_eval.py [--backend chroma|pg] [--top-k 8]
+Run:  uv run --env-file .env python evals/run_eval.py [--backend chroma|pg|hybrid] [--top-k 8]
 """
 
 import argparse
@@ -16,13 +16,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from judge import judge
 
 from answer import generate
-from pg_store import retrieve_pg
+from pg_store import retrieve_hybrid_pg, retrieve_pg
 from retrieve import retrieve
 
 QUESTIONS = Path(__file__).resolve().parent / "questions.jsonl"
 RETRIEVERS: dict[str, Callable[..., list[dict]]] = {
     "chroma": retrieve,
     "pg": retrieve_pg,
+    "hybrid": retrieve_hybrid_pg,
 }
 
 
