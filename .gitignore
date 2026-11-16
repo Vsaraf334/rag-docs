@@ -8,3 +8,6 @@ scratch/
 chroma_db/
 .DS_Store
 .claude/
+
+# eval run details (numbers go in the README)
+evals/results-*.jsonl
