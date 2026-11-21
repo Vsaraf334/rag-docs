@@ -27,9 +27,6 @@ SERVER = StdioServerParameters(command=sys.executable, args=["src/mcp_server.py"
 claude = anthropic.AsyncAnthropic()  # async version: every call is awaited
 
 
-# ============================== YOUR PART =====================================
-
-
 def to_claude_tool(tool: Tool) -> ToolParam:
     """MCP tool definition -> Claude API tool definition (doc 1.4: almost 1-to-1)."""
     return {
@@ -82,8 +79,6 @@ async def run_host(question: str) -> str:
 
     raise RuntimeError(f"Agent did not finish within {MAX_STEPS} steps")
 
-
-# ================================ TRY IT ======================================
 
 if __name__ == "__main__":
     question = " ".join(sys.argv[1:]) or "How do I make a query parameter required?"
