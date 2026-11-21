@@ -10,6 +10,8 @@ It can run in two modes:
 
 Chunks can be stored in Chroma or in Postgres with pgvector. The two backends return identical results for all 24 eval questions.
 
+The search is also available as an **MCP server**, so other apps such as Claude Code can search the docs ([details](#use-it-from-claude-code-mcp)).
+
 Built with Python, Postgres + pgvector (via Docker Compose), Chroma, and the Anthropic Python SDK (Claude Haiku 5.5 for answers, Claude Sonnet 5.5 as the judge).
 
 ## Example
@@ -52,6 +54,8 @@ Answering, agent mode (per question)
 | `compose.yaml` | Runs Postgres with pgvector locally, with a health check |
 | `src/answer.py` | Sends the chunks to Claude in `<document source="...">` tags and asks for a cited answer |
 | `src/agent.py` | The agent: `retrieve()` exposed as a `search_docs` tool through the SDK's tool runner, with limits on searches and steps |
+| `src/mcp_server.py` | An MCP server exposing `search_docs` (read-only, `top_k` validated, with usage instructions for hosts) |
+| `src/mcp_host.py` | A minimal MCP host: starts the server, converts its tools into Claude API tools, and runs the agent loop over MCP |
 | `evals/questions.jsonl` | 24 questions, each with its correct source file and the key fact a good answer must contain |
 | `evals/judge.py` | An LLM judge that grades an answer as `correct`, `partial`, or `incorrect`, with a one-sentence reason |
 | `evals/run_eval.py` | Runs every question in either mode and reports retrieval hit rate, answer accuracy, correct refusals, and the cost: API calls, searches, tokens and seconds per question |
@@ -148,13 +152,32 @@ uv run --env-file .env python evals/run_eval.py --backend pg
 
 The database listens on `127.0.0.1` only, and its data lives in a Docker volume, so it survives `docker compose down`. Use `docker compose down -v` to delete it.
 
+### Use it from Claude Code (MCP)
+
+`src/mcp_server.py` exposes the search as an [MCP](https://modelcontextprotocol.io) server. Any MCP host can start it and call `search_docs`. To add it to Claude Code for all your projects:
+
+```bash
+claude mcp add --scope user rag-docs -- uv run --directory /path/to/rag-docs python src/mcp_server.py
+claude mcp list                                                  # rag-docs: ... ✔ Connected
+```
+
+Then ask Claude Code a FastAPI question in a new session: it searches these docs and cites files like `[query-params.md]`. The server needs no API key, because the host provides the model.
+
+`src/mcp_host.py` shows what a host does, in about 50 lines: it starts the server, lists its tools, converts them to Claude API tool definitions, and runs the agent loop, turning each `tool_use` into an MCP `tools/call`:
+
+```bash
+uv run --env-file .env python src/mcp_host.py "How do I return a 404 error?"
+```
+
 ## Tests
 
 ```bash
-uv run pytest     # 28 tests, no API key needed
+uv run pytest     # 36 tests, no API key needed
 ```
 
 The tests cover chunk boundaries, document loading, storing and re-storing chunks without duplicates, retrieval order, prompt construction, and the Claude call itself (with a mocked client). The Chroma tests use a temporary directory, so they never touch the real index.
+
+8 tests cover the MCP server through a real MCP client connected in-process: the tool listing and its descriptions, searching, `top_k` validation, a missing query, the read-only annotation, and the error message for an empty index.
 
 7 of the tests are integration tests that run against the real Postgres. They use a separate `rag_test` database and empty it before each test, and one of them checks that Postgres and Chroma rank chunks the same way. If Postgres isn't running, they're skipped with a message instead of failing.
 
@@ -169,6 +192,8 @@ The tests cover chunk boundaries, document loading, storing and re-storing chunk
 - **The agent is bounded in code, not by the model's judgment.** It has at most 2 searches and 6 API calls per question, and `max_tokens` on every call. A refused search goes back to Claude as an error result ("Search limit reached. Answer with the documents you already have"), so it still answers. The tool runner has no step limit by default and doesn't raise when it stops early, so the code checks `stop_reason` itself.
 - **Claude's knowledge for searching, the documents for answering.** The agent may use what it knows about FastAPI to choose search words. The answer must still come only from the retrieved documents, and the judge checks it.
 - **Log what the agent did; don't ask it.** The `search_docs` tool records every query and source through a closure. In one run, Claude's answer said it had searched three times when it had searched four.
+- **The MCP server is a thin adapter.** It reuses `retrieve()` and `format_documents()` unchanged, so the pipeline, the agent and MCP hosts all search the same way.
+- **The server offers; the host decides.** Asked about MongoDB, the MCP host with no system prompt answered from Claude's general knowledge. With the server's `instructions` used as its system prompt, it refused. Grounding rules are behaviour, and behaviour belongs to the host. A host should only adopt instructions from servers it trusts, since they become part of its system prompt.
 - **Measure cost, not just quality.** The eval reports API calls, tokens and seconds per question, as averages and worst cases, because agents trade cost for accuracy.
 - **Measure before adding complexity.** Hybrid search is common advice. I built it (vector and keyword rankings fused with Reciprocal Rank Fusion in a single SQL query), measured it, found it hurt two questions, and kept plain vector search. The experiment is documented in [docs/hybrid-search.md](docs/hybrid-search.md).
 
