@@ -150,8 +150,13 @@ LIMIT %(top_k)s
 ### The Python side
 
 ```python
-params = {"vector": embed([question])[0], "question": question,
-          "candidates": 50, "rrf_k": 60, "top_k": top_k}
+params = {
+    "vector": embed([question])[0],
+    "question": question,
+    "candidates": 50,
+    "rrf_k": 60,
+    "top_k": top_k,
+}
 rows = conn.execute(HYBRID_SEARCH, params).fetchall()
 ```
 
